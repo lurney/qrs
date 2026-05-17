@@ -1,4 +1,4 @@
-name: Build ARM64 Binary
+name: Build Multi-Arch Docker Image
 
 on:
   push:
@@ -7,9 +7,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-x64:
+  build:
     runs-on: ubuntu-latest
-    name: Build x64 with Docker
+    name: Build and push (amd64 + arm64)
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
@@ -38,50 +42,13 @@ jobs:
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Build Docker image (amd64 + arm64)
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
             ghcr.io/${{ github.repository }}:latest
-
-  build-native-x64:
-    runs-on: ubuntu-latest
-    name: Native x64 binary (pkg)
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: "10.7.1"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build Nuxt project
-        run: pnpm run build
-
-      - name: Package with pkg (x64)
-        run: |
-          npm install -g pkg
-          pkg .output/server/index.mjs \
-            --targets node20-linux-x64 \
-            --output qrs-x64 2>&1
-
-      - name: Upload x64 binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: qrs-x64
-          path: qrs-x64

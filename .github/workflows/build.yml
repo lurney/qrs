@@ -1,0 +1,86 @@
+name: Build ARM64 Binary
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-latest
+    name: Build for Linux ARM64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Nuxt project
+        run: pnpm run build
+
+      - name: Package with nexe (ARM64 cross-compile)
+        run: |
+          npm install -g nexe
+          npx nexe .output/server/index.mjs \
+            -t linux-arm64 \
+            -o qrs-arm64 \
+            --verbose 2>&1
+
+      - name: Upload ARM64 binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qrs-arm64
+          path: qrs-arm64
+
+  build-x64:
+    runs-on: ubuntu-latest
+    name: Build for Linux x86_64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Nuxt project
+        run: pnpm run build
+
+      - name: Package with nexe (x64)
+        run: |
+          npm install -g nexe
+          npx nexe .output/server/index.mjs \
+            -t linux-x64 \
+            -o qrs-x64 \
+            --verbose 2>&1
+
+      - name: Upload x64 binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qrs-x64
+          path: qrs-x64

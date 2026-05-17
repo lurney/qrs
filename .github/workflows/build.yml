@@ -7,48 +7,44 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-arm64:
-    runs-on: ubuntu-latest
-    name: Build for Linux ARM64
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: "10.7.1"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build Nuxt project
-        run: pnpm run build
-
-      - name: Package with nexe (ARM64 cross-compile)
-        run: |
-          npm install -g nexe
-          npx nexe .output/server/index.mjs \
-            -t linux-arm64 \
-            -o qrs-arm64 \
-            --verbose 2>&1
-
-      - name: Upload ARM64 binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: qrs-arm64
-          path: qrs-arm64
-
   build-x64:
     runs-on: ubuntu-latest
-    name: Build for Linux x86_64
+    name: Build x64 with Docker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image (amd64 + arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}:latest
+
+  build-native-x64:
+    runs-on: ubuntu-latest
+    name: Native x64 binary (pkg)
 
     steps:
       - name: Checkout code
@@ -71,15 +67,14 @@ jobs:
       - name: Build Nuxt project
         run: pnpm run build
 
-      - name: Package with nexe (x64)
+      - name: Package with pkg (x64)
         run: |
-          npm install -g nexe
-          npx nexe .output/server/index.mjs \
-            -t linux-x64 \
-            -o qrs-x64 \
-            --verbose 2>&1
+          npm install -g pkg
+          pkg .output/server/index.mjs \
+            --targets node22-linux-x64 \
+            --output qrs-x64 2>&1
 
-      - name: Upload x64 binary artifact
+      - name: Upload x64 binary
         uses: actions/upload-artifact@v4
         with:
           name: qrs-x64

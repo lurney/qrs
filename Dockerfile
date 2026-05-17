@@ -11,14 +11,14 @@ RUN pnpm run build
 # ── Runtime: minimal image ──────────────────────────────
 FROM node:22-alpine AS runtime
 
-RUN addgroup -g 1000 -S qrs && adduser -u 1000 -S qrs -G qrs
+RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 
-COPY --from=builder --chown=qrs:qrs /app/.output/ .output/
-COPY --from=builder --chown=qrs:qrs /app/node_modules ./node_modules/
-COPY --from=builder --chown=qrs:qrs /app/package.json ./
+COPY --from=builder --chown=app:app /app/.output/ .output/
+COPY --from=builder --chown=app:app /app/node_modules ./node_modules/
+COPY --from=builder --chown=app:app /app/package.json ./
 
-USER qrs
+USER app
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

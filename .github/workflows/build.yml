@@ -77,7 +77,7 @@ jobs:
         run: |
           npm install -g pkg
           pkg .output/server/index.mjs \
-            --targets node22-linux-x64 \
+            --targets node20-linux-x64 \
             --output qrs-x64 2>&1
 
       - name: Upload x64 binary

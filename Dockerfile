@@ -3,7 +3,9 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY .output/ .output/
 COPY package.json ./
-COPY node_modules/ node_modules/
+
+# Install deps inside container (node_modules is gitignored)
+RUN npm install --production --ignore-scripts 2>&1 | tail -5
 
 # Verify build
 RUN node .output/server/index.mjs --help 2>&1 || node .output/server/index.mjs 2>&1 || true
@@ -12,6 +14,8 @@ FROM node:22-alpine AS runtime
 
 RUN addgroup -g 1000 -S qrs && adduser -u 1000 -S qrs -G qrs
 WORKDIR /app
+
+# Copy only runtime artifacts from builder
 COPY --from=builder --chown=qrs:qrs /app/.output/ .output/
 COPY --from=builder --chown=qrs:qrs /app/node_modules ./node_modules/
 COPY --from=builder --chown=qrs:qrs /app/package.json ./
